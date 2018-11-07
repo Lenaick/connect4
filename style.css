@@ -40,6 +40,14 @@ body {
 .player1 {
     background: red;
 }
+.player1Hover {
+    background: red;
+    opacity: 0.7;
+}
 .player2 {
     background: yellow;
+}
+.player2Hover {
+    background: yellow;
+    opacity: 0.7;
 }

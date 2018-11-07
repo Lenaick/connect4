@@ -1,3 +1,18 @@
+;(function ($) {
+    var oAddClass = $.fn.addClass;
+    $.fn.addClass = function () {
+        for (var i in arguments) {
+            var arg = arguments[i];
+            if ( !! (arg && arg.constructor && arg.call && arg.apply)) {
+                setTimeout(arg.bind(this));
+                delete arguments[i];
+            }
+        }
+        return oAddClass.apply(this, arguments);
+    }
+
+})(jQuery);
+
 var game = {
     nbColumn: 7,
     nbRow: 6,
@@ -16,15 +31,37 @@ var game = {
         game.partie = [];
 
         // Réinitialisation du nombre de points
-        $('#points').text('Joueur 1 (' + game.nbPointP1 + ') - Joueur 2 (' + game.nbPointP2 + ')');
+        game.setNbPoints(0,0);
 
         // Construction du plateau
         game.construirePlateau();
 
         // Enregistrement des évènements
+        game.bindColumn();
+    },
+
+    bindColumn: function() {
         $('.column').click(function () {
             game.placerPiece(this);
-        })
+        }).hover(
+            function() {
+                var position = game.getLastRowPosition(this);
+                if(position.length > 0) position.addClass(game.joueurActif + 'Hover');
+            },
+            function() {
+                var position = game.getLastRowPosition(this);
+                if(position.length > 0) position.removeClass(game.joueurActif + 'Hover');
+
+            });
+    },
+
+    setNbPoints: function(nbPointP1, nbPointP2) {
+        game.nbPointP1 = nbPointP1 === undefined ? game.nbPointP1 : nbPointP1;
+        game.nbPointP2 = nbPointP2 === undefined ? game.nbPointP2 : nbPointP2;
+        $('#points').html('<p>' +
+            '<span class="player1">Joueur 1 (' + game.nbPointP1 + ')</span> - ' +
+            '<span class="player2">Joueur 2 (' + game.nbPointP2 + ')</span>' +
+        '</p>');
     },
 
     // Construction du plateau
@@ -47,13 +84,45 @@ var game = {
 
     // Placement d'une pièce suite à un click sur une colonne
     placerPiece: function (elem) {
-        var i = elem.getAttribute('id');
-        var position = $("#" + i).find(".row:not(.player1,.player2)").last();
-        position.addClass(game.joueurActif);
-        if(game.verifierVictoire(position)) {
-            alert('Victoire ' + game.joueurActif);
+        var position = game.getLastRowPosition(elem);
+        if (position.length > 0) {
+            position.removeClass(game.joueurActif + 'Hover');
+            position.addClass(game.joueurActif, function() {
+                if(game.verifierVictoire(position))
+                    game.victoire();
+                else
+                    game.switchActif();
+            });
         }
+    },
+
+    getLastRowPosition: function(elem) {
+        var i = elem.getAttribute('id');
+        return $("#" + i).find(".row:not(.player1,.player2)").last();
+    },
+
+    switchActif: function() {
         game.joueurActif = (game.joueurActif === 'player1' ? 'player2' : 'player1');
+    },
+
+    victoire: function () {
+        $('.column').unbind();
+        if (game.joueurActif === 'player1')
+            game.nbPointP1++;
+        else
+            game.nbPointP2++;
+        game.setNbPoints();
+        game.confirmNouvelleManche();
+    },
+
+    confirmNouvelleManche: function () {
+        if (confirm('Victoire ' + game.joueurActif + '\nCommencer une nouvelle manche ?')) {
+            $('#plateau').unbind('click').find('.row.player1,.row.player2').removeClass('player1 player2');
+            game.bindColumn();
+            game.switchActif();
+        } else {
+            $('#plateau').click(game.confirmNouvelleManche);
+        }
     },
 
     verifierVictoire: function(position) {
