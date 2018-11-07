@@ -121,7 +121,7 @@ var game = {
             game.bindColumn();
             game.switchActif();
         } else {
-            $('#plateau').click(game.confirmNouvelleManche);
+            $('#plateau').unbind('click').click(game.confirmNouvelleManche);
         }
     },
 
