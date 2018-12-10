@@ -22,6 +22,7 @@ body {
     flex-wrap: wrap;
     align-items: center;
     float: left;
+    height: 100%;
 }
 .column {
     width: 13%;

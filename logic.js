@@ -21,6 +21,7 @@ var game = {
     joueurActif: 'player1',
     nbPointP1: 0,
     nbPointP2: 0,
+    profondeur: 4,
 
 
     // Initialisation d'une partie
@@ -46,11 +47,11 @@ var game = {
         }).hover(
             function() {
                 var position = game.getLastRowPosition(this);
-                if(position.length > 0) position.addClass(game.joueurActif + 'Hover');
+                if(position.length > 0 && game.joueurActif === 'player1') position.addClass(game.joueurActif + 'Hover');
             },
             function() {
                 var position = game.getLastRowPosition(this);
-                if(position.length > 0) position.removeClass(game.joueurActif + 'Hover');
+                if(position.length > 0 && game.joueurActif === 'player1') position.removeClass(game.joueurActif + 'Hover');
 
             });
     },
@@ -76,7 +77,6 @@ var game = {
                 var elem = $('<div class="row" id="' + col + '_' + row + '"></div>');
                 elemeCol.append(elem);
                 game.plateau[col][row] = elem;
-                game.partie[col][row] = 0;
             }
             elemPlateau.append(elemeCol);
         }
@@ -88,7 +88,11 @@ var game = {
         if (position.length > 0) {
             position.removeClass(game.joueurActif + 'Hover');
             position.addClass(game.joueurActif, function() {
-                if(game.verifierVictoire(position))
+                var [col, row] = game.getColRow(position);
+                //On remplit le tableau de la partie
+                game.partie[col][row] = game.joueurActif;
+                // Vérification du cas de victoire
+                if(game.verifierVictoire(game.plateau, col, row))
                     game.victoire();
                 else
                     game.switchActif();
@@ -103,6 +107,10 @@ var game = {
 
     switchActif: function() {
         game.joueurActif = (game.joueurActif === 'player1' ? 'player2' : 'player1');
+        // if (game.joueurActif === 'player2') {
+        //     var col = IA.obtenirCoup(game.joueurActif);
+        //     $("#" + col).trigger("click");
+        // }
     },
 
     victoire: function () {
@@ -125,16 +133,16 @@ var game = {
         }
     },
 
-    verifierVictoire: function(position) {
-        var id = position.attr('id'),
-            col = id.split('_')[0],
-            row = id.split('_')[1];
+    getColRow: function(position) {
+        return position.attr('id').split('_');
+    },
 
+    verifierVictoire: function(unPlateau, col, row) {
         // Vérification ligne horizontal
         var nb = 0;
         for (var i=1; i <= game.nbColumn; i++) {
-            // Si la case est selectionner par le joueur actif on augmente l'incrément
-            if (game.plateau[i][row].hasClass(game.joueurActif)) nb++;
+           // Si la case est selectionner par le joueur actif on augmente l'incrément
+            if (this.checkSelection(unPlateau[i][row])) nb++;
             // Sinon on remet à zéro l'incrément
             else nb = 0;
             // Si on a au moins 4 case consécutives qui se suivent on met fin au parcours
@@ -144,7 +152,7 @@ var game = {
         // Vérification ligne verticale
         nb = 0;
         for (var i=1; i <= game.nbRow; i++) {
-            if (game.plateau[col][i].hasClass(game.joueurActif)) nb++;
+            if (this.checkSelection(unPlateau[col][i])) nb++;
             else nb = 0;
             if (nb >= 4) return true;
         }
@@ -155,7 +163,7 @@ var game = {
             rowMin = (delta > 0 ? delta + 1 : 1),
             rowMax = (game.nbColumn + delta < game.nbRow ? game.nbColumn + delta : game.nbRow);
         for (var i=rowMin; i <= rowMax; i++) {
-            if (game.plateau[i - delta][i].hasClass(game.joueurActif)) nb++;
+            if (this.checkSelection(unPlateau[i-delta][i])) nb++;
             else nb = 0;
             if (nb >= 4) return true;
         }
@@ -166,9 +174,36 @@ var game = {
         rowMin = (delta > game.nbColumn ? delta - game.nbColumn : 1);
         rowMax = (delta - 1 < game.nbRow ? delta - 1 : game.nbRow);
         for (var i=rowMin; i <= rowMax; i++) {
-            if (game.plateau[delta - i][i].hasClass(game.joueurActif)) nb++;
+            if (this.checkSelection(unPlateau[delta - i][i])) nb++;
             else nb = 0;
             if (nb >= 4) return true;
+        }
+        return false;
+    },
+
+    checkSelection: function(o) {
+        if (typeof o === "string") {
+            return o === game.joueurActif;
+        } else if (typeof o === "object" && o.hasClass(game.joueurActif)) {
+            return true
+        }
+        return false;
+    },
+
+    plateauTotalementRemplit: function(unPlateau) {
+        var nbColRemplit = 0;
+        for (var i=1; i <= game.nbColumn; i++) {
+            // Si la dernière ligne est remplit alors la colonne est remplit
+            nbColRemplit += (typeof unPlateau[i][game.nbRow] !== "undefined" ? 1 : 0);
+        }
+        return nbColRemplit === game.nbColumn;
+    },
+
+    coupGagnant: function(unPlateau, colonne) {
+        var position = $("#" + colonne).find(".row:not(.player1,.player2)").last();
+        if (position.length > 0) {
+            var [col, row] = game.getColRow(position);
+            return game.verifierVictoire(unPlateau, col, row);
         }
         return false;
     }
