@@ -21,7 +21,7 @@ var game = {
     joueurActif: 'player1',
     nbPointP1: 0,
     nbPointP2: 0,
-    profondeur: 4,
+    profondeur: 7,
 
 
     // Initialisation d'une partie
@@ -107,10 +107,10 @@ var game = {
 
     switchActif: function() {
         game.joueurActif = (game.joueurActif === 'player1' ? 'player2' : 'player1');
-        // if (game.joueurActif === 'player2') {
-        //     var col = IA.obtenirCoup(game.joueurActif);
-        //     $("#" + col).trigger("click");
-        // }
+        if (game.joueurActif === 'player2') {
+            var col = IA.obtenirCoup(game);
+            $("#" + col).trigger("click");
+        }
     },
 
     victoire: function () {
@@ -199,13 +199,9 @@ var game = {
         return nbColRemplit === game.nbColumn;
     },
 
-    coupGagnant: function(unPlateau, colonne) {
-        var position = $("#" + colonne).find(".row:not(.player1,.player2)").last();
-        if (position.length > 0) {
-            var [col, row] = game.getColRow(position);
-            return game.verifierVictoire(unPlateau, col, row);
-        }
-        return false;
+    coupGagnant: function(unPlateau, col, row) {
+        //console.log("coupGagnant : verifierVictoire (" + col + ", " + row + ")" + game.verifierVictoire(unPlateau, col, row));
+        return game.verifierVictoire(unPlateau, col, row);
     }
 
 };
