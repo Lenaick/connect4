@@ -21,7 +21,7 @@ var game = {
     joueurActif: 'player1',
     nbPointP1: 0,
     nbPointP2: 0,
-    profondeur: 7,
+    profondeur: 4,
 
 
     // Initialisation d'une partie

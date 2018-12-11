@@ -39,11 +39,13 @@ var IA = {
     obtenirCoup: function (currentGame) {
         this.currentGame = currentGame;
         var unPlateau = jQuery.extend(true, {}, currentGame.partie);
+        var profondeur = currentGame.profondeur;
+        console.log(profondeur);
         var
             joueur = this.currentGame.joueurActif,
             cps = this.obtenirCoupsPossibles(unPlateau),
             resultat = cps.ieme(1),
-            meilleurScore = this.scoreDUnCoup(unPlateau, resultat, joueur, joueur, this.currentGame.profondeur),
+            meilleurScore = this.scoreDUnCoup(unPlateau, resultat, joueur, joueur, profondeur, profondeur),
             meilleurScores = [resultat];
         // console.log('obtenirCoup : meilleurScore=' + meilleurScore);
         //console.log('obtenirCoup : cps.nb()=' + cps.nb());
@@ -63,16 +65,16 @@ var IA = {
         // }, this);
 
         var loop = [];
-        console.log(cps);
+        // console.log(cps);
         for (var i=2; i <= cps.nb(); i++) {
             loop.push(i);
         }
-        console.log(loop);
+        // console.log(loop);
         loop = shuffle(loop);
-        console.log(loop);
+        // console.log(loop);
         loop.forEach(function(i) {
             // console.log('obtenirCoup : i=' + i);
-            var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueur, joueur, this.currentGame.profondeur);
+            var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueur, joueur, profondeur, profondeur);
             // console.log('obtenirCoup : scoreDUnCoup=' + score);
             // Changement de meilleur score
             if (score > meilleurScore) {
@@ -111,8 +113,7 @@ var IA = {
         return resultat;
     },
     jouerUnCoup: function(unPlateau, col, joueur) {
-        var _unPlateau, lastRow;
-        _unPlateau = jQuery.extend(true, {}, unPlateau);
+        var lastRow;
         if (unPlateau[col].length === 0) {
             lastRow = 1;
             unPlateau[col][1] = joueur;
@@ -120,25 +121,31 @@ var IA = {
             lastRow = unPlateau[col].length;
             unPlateau[col][lastRow] = joueur;
         }
-        return [unPlateau, lastRow];
+        return lastRow;
     },
-    scoreDUnCoup: function(unPlateau, col, joueurRef, joueurCourant, profondeur) {
-        var row;
-        [unPlateau, row] = this.jouerUnCoup(unPlateau, col, joueurCourant);
+    scoreDUnCoup: function(unPlateau, col, joueurRef, joueurCourant, profondeurRef, profondeurCourante) {
+        var _unPlateau = jQuery.extend(true, {}, unPlateau),
+            row = this.jouerUnCoup(_unPlateau, col, joueurCourant);
         //console.log('scoreDunCoup : col=' + col + ' joueurRef=' + joueurRef + ' joueurCourant=' + joueurCourant + ' profondeur=' + profondeur);
-        if (game.plateauTotalementRemplit(unPlateau) || game.coupGagnant(unPlateau, col, row) || profondeur === 0) {
-            return this.evaluer(unPlateau, joueurRef);
+        if (game.plateauTotalementRemplit(_unPlateau) || game.coupGagnant(_unPlateau, col, row) || profondeurCourante === 0) {
+            return this.evaluer(_unPlateau, joueurRef);
         }
         var autreJoueur = (joueurCourant === 'player1' ? 'player2' : 'player1');
-        return this.minMax(unPlateau, joueurRef, autreJoueur, profondeur-1);
+        return this.minMax(_unPlateau, unPlateau, joueurRef, autreJoueur, profondeurRef, profondeurCourante-1);
     },
-    minMax: function(unPlateau, joueurRef, joueurCourant, profondeur) {
+    minMax: function(unPlateau, unPlateauRef, joueurRef, joueurCourant, profondeurRef, profondeurCourante) {
         //console.log('minMax : joueurRef=' + joueurRef + ' joueurCourant=' + joueurCourant + ' profondeur=' + profondeur);
         var cps = this.obtenirCoupsPossibles(unPlateau),
-            resultat = this.scoreDUnCoup(unPlateau, cps.ieme(1),joueurRef, joueurCourant, profondeur);
+            _unPlateau = jQuery.extend(true, {}, unPlateau),
+            resultat = this.scoreDUnCoup(_unPlateau, cps.ieme(1),joueurRef, joueurCourant, profondeurRef, profondeurCourante);
         //console.log('minMax : cps.ieme(1)=' + cps.ieme(1) + ' resultat=' + resultat);
         for (var i=2; i <= cps.nb(); i++) {
-            var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueurRef, joueurCourant, profondeur);
+            if (i === cps.nb()) {
+                profondeurRef = profondeurRef - 1;
+            }
+            _unPlateau = unPlateauRef;
+            profondeurCourante = profondeurRef;
+            var score = this.scoreDUnCoup(_unPlateau, cps.ieme(i), joueurRef, joueurCourant, profondeurRef, profondeurCourante);
             //console.log('minMax : cps.ieme(' + i + ')=' + cps.ieme(i) + ' score=' + score);
             if (joueurCourant === joueurRef) {
                 resultat = (resultat < score ? score : resultat);
