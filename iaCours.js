@@ -22,6 +22,12 @@ var Coups = {
     }
 };
 
+function Arbre() {
+    this.score = undefined;
+    this.profondeur = undefined;
+    this.fils = [];
+}
+
 function shuffle(array) {
     var currentIndex = array.length, temporaryValue, randomIndex;
     while (0 !== currentIndex) {
@@ -40,44 +46,28 @@ var IA = {
         this.currentGame = currentGame;
         var unPlateau = jQuery.extend(true, {}, currentGame.partie);
         var profondeur = currentGame.profondeur;
-        console.log(profondeur);
-        var
-            joueur = this.currentGame.joueurActif,
-            cps = this.obtenirCoupsPossibles(unPlateau),
-            resultat = cps.ieme(1),
-            meilleurScore = this.scoreDUnCoup(unPlateau, resultat, joueur, joueur, profondeur, profondeur),
-            meilleurScores = [resultat];
-        // console.log('obtenirCoup : meilleurScore=' + meilleurScore);
-        //console.log('obtenirCoup : cps.nb()=' + cps.nb());
-        // var randomCoups = shuffle(cps.colDispos());
-        // randomCoups.forEach(function(el, idx) {
-        //     // console.log('obtenirCoup : i=' + i);
-        //     var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueur, joueur, this.currentGame.profondeur);
-        //     // console.log('obtenirCoup : scoreDUnCoup=' + score);
-        //     // Changement de meilleur score
-        //     if (score > meilleurScore) {
-        //         resultat = cps.ieme(i);
-        //         meilleurScore = score;
-        //         meilleurScores = [resultat];
-        //     } else if (score === meilleurScore) {
-        //         meilleurScores.push(cps.ieme(i));
-        //     }
-        // }, this);
-
+        var joueur = this.currentGame.joueurActif;
+        var meilleurScores = this.meilleurScores(unPlateau, joueur, profondeur);
+        return meilleurScores[Math.floor(Math.random() * meilleurScores.length)];
+    },
+    randCoupsPossible: function(unPlateau, cps) {
         var loop = [];
-        // console.log(cps);
-        for (var i=2; i <= cps.nb(); i++) {
+        for (var i=1; i <= cps.nb(); i++)
             loop.push(i);
-        }
-        // console.log(loop);
-        loop = shuffle(loop);
-        // console.log(loop);
+        return shuffle(loop);
+    },
+    meilleurScores: function(unPlateau, joueur, profondeur) {
+        var cps = this.obtenirCoupsPossibles(unPlateau),
+            resultat, meilleurScore, meilleurScores = [],
+            loop = this.randCoupsPossible(unPlateau, cps),
+            arbreParent = new Arbre();
         loop.forEach(function(i) {
-            // console.log('obtenirCoup : i=' + i);
-            var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueur, joueur, profondeur, profondeur);
-            // console.log('obtenirCoup : scoreDUnCoup=' + score);
-            // Changement de meilleur score
-            if (score > meilleurScore) {
+            var arbre = new Arbre();
+            var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueur, joueur, profondeur, profondeur, arbre);
+            arbre.score = score;
+            arbre.profondeur = profondeur;
+            arbreParent.fils.push(arbre);
+            if (typeof meilleurScore === "undefined" || score > meilleurScore) {
                 resultat = cps.ieme(i);
                 meilleurScore = score;
                 meilleurScores = [resultat];
@@ -85,21 +75,8 @@ var IA = {
                 meilleurScores.push(cps.ieme(i));
             }
         }, this);
-
-        // for (var i=2; i <= cps.nb(); i++) {
-        //     // console.log('obtenirCoup : i=' + i);
-        //     var score = this.scoreDUnCoup(unPlateau, cps.ieme(i), joueur, joueur, this.currentGame.profondeur);
-        //     // console.log('obtenirCoup : scoreDUnCoup=' + score);
-        //     // Changement de meilleur score
-        //     if (score > meilleurScore) {
-        //         resultat = cps.ieme(i);
-        //         meilleurScore = score;
-        //         meilleurScores = [resultat];
-        //     } else if (score === meilleurScore) {
-        //         meilleurScores.push(cps.ieme(i));
-        //     }
-        // }
-        return meilleurScores[Math.floor(Math.random() * meilleurScores.length)];
+        console.log(arbreParent);
+        return meilleurScores;
     },
     obtenirCoupsPossibles: function(unPlateau) {
         var resultat = Object.create(Coups);
@@ -123,7 +100,7 @@ var IA = {
         }
         return lastRow;
     },
-    scoreDUnCoup: function(unPlateau, col, joueurRef, joueurCourant, profondeurRef, profondeurCourante) {
+    scoreDUnCoup: function(unPlateau, col, joueurRef, joueurCourant, profondeurRef, profondeurCourante, arbre) {
         var _unPlateau = jQuery.extend(true, {}, unPlateau),
             row = this.jouerUnCoup(_unPlateau, col, joueurCourant);
         //console.log('scoreDunCoup : col=' + col + ' joueurRef=' + joueurRef + ' joueurCourant=' + joueurCourant + ' profondeur=' + profondeur);
@@ -131,28 +108,41 @@ var IA = {
             return this.evaluer(_unPlateau, joueurRef);
         }
         var autreJoueur = (joueurCourant === 'player1' ? 'player2' : 'player1');
-        return this.minMax(_unPlateau, unPlateau, joueurRef, autreJoueur, profondeurRef, profondeurCourante-1);
+        return this.minMax(_unPlateau, joueurRef, autreJoueur, profondeurRef, profondeurCourante-1, arbre);
+
     },
-    minMax: function(unPlateau, unPlateauRef, joueurRef, joueurCourant, profondeurRef, profondeurCourante) {
+    minMax: function(unPlateau, joueurRef, joueurCourant, profondeurRef, profondeurCourante, arbreParent) {
         //console.log('minMax : joueurRef=' + joueurRef + ' joueurCourant=' + joueurCourant + ' profondeur=' + profondeur);
         var cps = this.obtenirCoupsPossibles(unPlateau),
             _unPlateau = jQuery.extend(true, {}, unPlateau),
-            resultat = this.scoreDUnCoup(_unPlateau, cps.ieme(1),joueurRef, joueurCourant, profondeurRef, profondeurCourante);
-        //console.log('minMax : cps.ieme(1)=' + cps.ieme(1) + ' resultat=' + resultat);
-        for (var i=2; i <= cps.nb(); i++) {
-            if (i === cps.nb()) {
-                profondeurRef = profondeurRef - 1;
-            }
-            _unPlateau = unPlateauRef;
-            profondeurCourante = profondeurRef;
-            var score = this.scoreDUnCoup(_unPlateau, cps.ieme(i), joueurRef, joueurCourant, profondeurRef, profondeurCourante);
+            resultat, loop = this.randCoupsPossible(unPlateau, cps);
+        loop.forEach(function(i, idx) {
+            // if (idx === loop.length) profondeurRef = profondeurRef - 1;
+            // profondeurCourante = profondeurRef;
+            var arbre = new Arbre();
+            var score = this.scoreDUnCoup(_unPlateau, cps.ieme(i), joueurRef, joueurCourant, profondeurRef, 0 + profondeurCourante, arbre);
+            // if (index === loop.length) {
+            // if (profondeurRef > 0) {
+            //     profondeurRef--;
+            // }
+            // profondeurCourante = profondeurRef;
+            arbre.score = score;
+            arbre.profondeur = profondeurCourante;
+            arbreParent.fils.push(arbre);
             //console.log('minMax : cps.ieme(' + i + ')=' + cps.ieme(i) + ' score=' + score);
             if (joueurCourant === joueurRef) {
-                resultat = (resultat < score ? score : resultat);
+                resultat = (typeof resultat === "undefined" || resultat < score ? score : resultat);
             } else {
-                resultat = (resultat < score ? resultat : score);
+                resultat = (typeof resultat === "undefined" || resultat < score ? resultat : score);
             }
-        }
+        }, this);
+        arbreParent.score = resultat;
+        arbreParent.profondeur = profondeurCourante;
+
+        // if (profondeurRef > 0) {
+        //     profondeurRef--;
+        // }
+        // profondeurCourante = profondeurRef;
         return resultat;
     },
     evaluer: function(unPlateau, joueurRef) {
